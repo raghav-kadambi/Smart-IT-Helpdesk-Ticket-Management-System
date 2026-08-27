@@ -1,223 +1,199 @@
 # Smart IT Helpdesk Ticket Management System
 
-A desktop IT helpdesk application built for a **TCS Prime technical interview demonstration**.
+An automated desktop IT helpdesk and incident management system designed for enterprise support teams.
 
-Employees can submit IT support tickets. The system uses **simple, rule-based logic** (not AI or machine learning) to categorize the issue, calculate priority, assign a technician, and store everything in SQLite.
-
----
-
-## Problem statement
-
-In many offices, IT issues are reported through email or chat. Tickets can be miscategorized, given the wrong priority, or assigned unevenly to technicians. This project shows a small, explainable system that automates those first steps.
+The system streamlines internal IT support workflows by automatically categorizing submitted issues, calculating standard ITIL priority scores, assigning domain-specialized technicians through greedy load balancing, and tracking ticket lifecycles from creation to resolution.
 
 ---
 
-## Objective
+## System Overview & Objectives
 
-Build a **local desktop application** where:
+In modern organizations, IT support requests often arrive through fragmented, unstructured channels (emails, chat, phone calls). Without automated triage:
+- Critical hardware or network outages wait in the same unorganized queues as minor software queries.
+- Support tickets are frequently misclassified or misrouted.
+- Support technicians experience unbalanced workloads.
 
-1. An employee submits a ticket description, urgency, and impact.
-2. The system classifies the category using keywords.
-3. The system calculates priority from urgency + impact.
-4. The system assigns a technician based on category and current workload.
-5. Tickets are stored in SQLite.
-6. Admins/technicians can view, filter, and update ticket status.
-7. A dashboard shows basic statistics.
+This project delivers a **lightweight, desktop-based IT service management solution** developed in Python. It provides automated incident triage, real-time workload balancing, transparent audit tracking, and executive KPI reporting—all without requiring complex database server infrastructure.
 
 ---
 
-## Features
+## Core Capabilities & Features
 
-- Simple login with two roles: **Employee** and **Admin/Technician**
-- Create tickets (employee ID, name, description, urgency, impact)
-- Keyword-based category classification
-- Priority scoring (LOW / MEDIUM / HIGH / CRITICAL)
-- Technician assignment by specialization and lowest open-ticket count
-- SQLite storage with three tables
-- Ticket statuses: OPEN, IN PROGRESS, RESOLVED
-- Admin dashboard with counts, filters, and status updates
-- Employee dashboard to create tickets and view only their own tickets
+### 1. Role-Based Access
+- **Employee Portal:** Enables employees to submit new IT tickets, specify operational urgency and business impact, and monitor the live progress of their personal tickets.
+- **Admin / Technician Portal:** Provides IT administrators and technicians with global ticket visibility, real-time KPI metrics, multi-criteria filtering, and status management.
 
-This project is a **rule-based ticket classification system**. It does **not** use AI, NLP libraries, or machine learning.
+### 2. Automated Rule-Based Classification
+- Fast, deterministic keyword matching algorithm that tokenizes ticket descriptions and calculates frequency scores across domain dictionaries (`Network`, `Hardware`, `Software`, `Security`, and `Other`).
+- Operates transparently without opaque black-box models or external API dependencies.
+
+### 3. ITIL-Compliant Priority Scoring
+- Combines categorical inputs (Urgency & Impact: Low, Medium, High) into a normalized numeric score ($2\text{ to }6$).
+- Automatically maps scores to standardized incident response tiers: `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`.
+
+### 4. Smart Dispatching & Load Balancing
+- Routes incidents directly to technicians with matching domain specializations.
+- Balances active workloads by dynamically selecting the specialist with the fewest active (`OPEN` or `IN PROGRESS`) tickets.
+- Automatically handles general `"Other"` requests by routing to the technician with the lowest overall queue.
+
+### 5. Complete Ticket Lifecycle Tracking
+- Tracks status transitions: `OPEN` $\rightarrow$ `IN PROGRESS` $\rightarrow$ `RESOLVED`.
+- Automatically timestamps creation and resolution times while synchronizing technician workload counters.
+
+### 6. Interactive Executive Dashboard
+- Real-time KPI summary cards displaying **Total**, **Open**, **Critical**, and **Resolved** ticket metrics.
+- Dynamic filtering by ticket status and priority level.
 
 ---
 
-## Technology stack
+## Technology Stack & Architecture
 
-| Layer | Choice | Why |
+| Layer | Technology | Purpose |
 | --- | --- | --- |
-| Language | Python 3 | Easy to read and explain |
-| GUI | Tkinter (built-in) | No extra install, enough for a desktop demo |
-| Database | SQLite via `sqlite3` | File-based, no server, no ORM |
-| Libraries | Python standard library only | Interview-friendly |
-
-Not used: Flask, Django, React, Node.js, Docker, cloud services, external APIs, MySQL, ML libraries.
+| **Language** | Python 3 | Core application runtime and business logic |
+| **User Interface** | Tkinter (`tkinter.ttk`) | Native, responsive desktop graphical interface |
+| **Data Storage** | Pure Python + JSON (`json` module) | In-memory dynamic collections with human-readable JSON persistence |
+| **Standard Libraries** | `os`, `json`, `datetime` | Standard library components ensuring zero external package dependencies |
 
 ---
 
-## System workflow
+## System Architecture & Workflow
 
 ```
-Employee login
-    -> Enter problem description, urgency, impact
-    -> classifier.py finds the category from keywords
-    -> priority.py calculates priority_score and label
-    -> assignment.py picks a technician
-    -> database.py saves the ticket in SQLite
-    -> Employee sees the ticket in "My Tickets"
-
-Admin / Technician login
-    -> Dashboard shows Total / Open / Critical / Resolved
-    -> Table shows all tickets
-    -> Filter by status or priority
-    -> Update status (OPEN / IN PROGRESS / RESOLVED)
-    -> If resolved: set resolved_at and decrease open_ticket_count
-```
-
----
-
-## Database schema
-
-### employees
-| Column | Meaning |
-| --- | --- |
-| employee_id | Unique employee number (primary key) |
-| name | Employee name |
-| department | Department name |
-
-### technicians
-| Column | Meaning |
-| --- | --- |
-| technician_id | Auto-increment ID |
-| name | Technician name |
-| specialization | Network / Hardware / Software / Security |
-| open_ticket_count | How many tickets are currently OPEN or IN PROGRESS |
-
-### tickets
-| Column | Meaning |
-| --- | --- |
-| ticket_id | Auto-increment ID |
-| employee_id | Who raised the ticket (foreign key) |
-| description | Problem text |
-| category | Network / Hardware / Software / Security / Other |
-| urgency | Low / Medium / High |
-| impact | Low / Medium / High |
-| priority | LOW / MEDIUM / HIGH / CRITICAL |
-| priority_score | 2 to 6 |
-| assigned_to | Technician name |
-| status | OPEN / IN PROGRESS / RESOLVED |
-| created_at | Created timestamp |
-| resolved_at | Resolved timestamp (NULL until resolved) |
-
----
-
-## How ticket classification works
-
-The classifier is **keyword counting**, not machine learning.
-
-1. Convert the description to lowercase.
-2. For each category, count how many of its keywords appear in the text.
-3. Choose the category with the **highest count**.
-4. If the highest count is 0, category = **Other**.
-5. If two categories tie, pick the first in this order: Network, Hardware, Software, Security.
-
-Example: `"My laptop cannot connect to WiFi"`
-
-- Network matches `wifi` (1)
-- Hardware matches `laptop` (1)
-- Tie → **Network** (first in the fixed order)
-
-Example: `"Need to install a new software application"`
-
-- Software matches `software`, `application`, `install` (3) → **Software**
-
----
-
-## How priority calculation works
-
-```
-Low = 1, Medium = 2, High = 3
-priority_score = urgency_score + impact_score
-```
-
-| Score | Priority |
-| --- | --- |
-| 2–3 | LOW |
-| 4 | MEDIUM |
-| 5 | HIGH |
-| 6 | CRITICAL |
-
-Example: High urgency + High impact = 3 + 3 = 6 → **CRITICAL**
-
----
-
-## How technician assignment works
-
-| Category | Specialist |
-| --- | --- |
-| Network | Ravi Kumar |
-| Hardware | Priya Nair |
-| Software | Arun Menon |
-| Security | Karthik Rao |
-| Other | Technician with the lowest open ticket count |
-
-If more than one technician shares a specialization, the ticket goes to the one with the **lowest `open_ticket_count`**. Ties are broken by smaller `technician_id`.
-
-When a ticket is created, that technician’s `open_ticket_count` increases by 1. When it is marked RESOLVED, the count decreases by 1.
-
----
-
-## Project structure
-
-```
-smart_helpdesk/
-├── main.py          Application entry point
-├── database.py      SQLite connection, tables, CRUD
-├── classifier.py    Keyword-based category classification
-├── priority.py      Urgency + impact → priority
-├── assignment.py    Technician assignment
-├── gui.py           Tkinter login and dashboards
-└── helpdesk.db      Created automatically on first run
+[Employee Portal]
+       │
+       ▼
+[Enter Issue Details] ──► Urgency (1-3), Impact (1-3), Problem Description
+       │
+       ├─► 1. classifier.py: Token frequency matching determines Category
+       ├─► 2. priority.py: Urgency + Impact matrix calculates Priority Score & Tier
+       ├─► 3. assignment.py: Dispatches to domain specialist with lowest active load
+       │
+       ▼
+[Data Persistence (database.py)] ──► Updates helpdesk_data.json & increments workload
+       │
+       ▼
+[Admin & Technician Portal]
+       │
+       ├─► Real-time KPI Summary: Total, Open, Critical, Resolved counts
+       ├─► Multi-factor filtering by Status and Priority
+       └─► Status Updates: Resolving a ticket updates resolved_at and decrements technician queue
 ```
 
 ---
 
-## How to run the project
+## Data Schema & Storage
 
-Requirements: Python 3 (Tkinter is included with standard Windows Python).
+The system utilizes an in-memory structured data model persisted to `helpdesk_data.json`:
 
-```bash
-cd smart_helpdesk
+### Employees (`employees`)
+| Attribute | Type | Description |
+| --- | --- | --- |
+| `employee_id` | `int` | Unique employee identification number (e.g., `1024`) |
+| `name` | `str` | Full employee name |
+| `department` | `str` | Organizational department (Sales, Finance, HR, Operations, Marketing) |
+
+### Technicians (`technicians`)
+| Attribute | Type | Description |
+| --- | --- | --- |
+| `technician_id` | `int` | Unique technician identifier |
+| `name` | `str` | Support technician name |
+| `specialization` | `str` | Domain area: `Network`, `Hardware`, `Software`, `Security` |
+| `open_ticket_count` | `int` | Current count of active (`OPEN` or `IN PROGRESS`) assigned tickets |
+
+### Tickets (`tickets`)
+| Attribute | Type | Description |
+| --- | --- | --- |
+| `ticket_id` | `int` | Auto-incrementing sequential ticket identifier |
+| `employee_id` | `int` | Reference ID of the submitting employee |
+| `description` | `str` | Full text problem description |
+| `category` | `str` | Assigned domain (`Network`, `Hardware`, `Software`, `Security`, `Other`) |
+| `urgency` | `str` | Operational urgency level (`Low`, `Medium`, `High`) |
+| `impact` | `str` | Business impact level (`Low`, `Medium`, `High`) |
+| `priority` | `str` | Priority tier (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) |
+| `priority_score` | `int` | Mathematical priority score ($2 \text{ to } 6$) |
+| `assigned_to` | `str` | Name of the assigned support technician |
+| `status` | `str` | Current lifecycle state (`OPEN`, `IN PROGRESS`, `RESOLVED`) |
+| `created_at` | `str` | Creation timestamp (`YYYY-MM-DD HH:MM:SS`) |
+| `resolved_at` | `str` / `None` | Resolution timestamp (`None` while ticket remains open) |
+
+---
+
+## Core Algorithms
+
+### 1. Frequency-Based Keyword Classification (`classifier.py`)
+- Standardizes text to lowercase and scans against domain-specific keyword dictionaries:
+  - **Network:** `wifi`, `wi-fi`, `internet`, `router`, `network`, `connection`, `lan`, `vpn`
+  - **Hardware:** `keyboard`, `mouse`, `screen`, `laptop`, `printer`, `monitor`, `cpu`, `battery`
+  - **Software:** `software`, `application`, `install`, `installation`, `program`, `update`, `license`
+  - **Security:** `virus`, `malware`, `phishing`, `password`, `hacked`, `security`, `otp`, `unauthorized`
+- Identifies the category with the highest frequency match. Defaults to `"Other"` if no keywords match.
+
+### 2. Incident Priority Matrix (`priority.py`)
+- Maps categorical levels to integer weights: $\text{Low} = 1$, $\text{Medium} = 2$, $\text{High} = 3$.
+- $\text{Priority Score} = \text{Urgency Weight} + \text{Impact Weight}$.
+
+| Score Range | Priority Tier | Operational Definition |
+| :---: | :---: | :--- |
+| **2 – 3** | `LOW` | Minor issue with minimal productivity impact |
+| **4** | `MEDIUM` | Standard operational problem affecting a single user |
+| **5** | `HIGH` | Significant impediment affecting vital business workflows |
+| **6** | `CRITICAL` | Severe outage, core system failure, or security breach |
+
+### 3. Load-Balanced Dispatching (`assignment.py`)
+- Filters technician pool by domain specialization.
+- Applies a greedy optimization strategy to pick the technician with the minimal active queue:
+  $$\text{Target Technician} = \min(\text{candidates}, \text{key}=(\text{open\_ticket\_count}, \text{technician\_id}))$$
+
+---
+
+## Project Structure
+
+```
+Smart-IT-Helpdesk-Ticket-Management-System/
+│
+├── main.py               # Main application entry point
+├── database.py           # Data access layer, CRUD operations & JSON persistence
+├── classifier.py         # Keyword-based category classification engine
+├── priority.py           # Urgency/Impact priority scoring module
+├── assignment.py         # Technician routing & load balancing module
+├── gui.py                # Desktop GUI implementation (Login, Employee, Admin)
+├── helpdesk_data.json    # JSON database file (auto-seeded on first run)
+└── README.md             # Complete project documentation
+```
+
+---
+
+## Installation & Execution
+
+### Prerequisites
+- Python 3.8+ (Tkinter and standard libraries are included with standard Python installations).
+
+### Running the Application
+```powershell
 python main.py
 ```
 
-### Demo login
+### Default Credentials
 
-| Role | Username | Password |
+| Portal | User Identifier | Password |
 | --- | --- | --- |
-| Employee | `1024` to `1028` | `emp123` |
-| Admin/Technician | `admin` | `admin123` |
+| **Employee Portal** | `1024` (or `1025`–`1028`) | `emp123` |
+| **Admin / Technician Portal** | `admin` | `admin123` |
 
-Sample employees: Amit Sharma (1024), Neha Patel (1025), Rohan Iyer (1026), Sneha Reddy (1027), Vikram Singh (1028).
-
-The first run creates `helpdesk.db` and inserts sample employees, technicians, and a few tickets so the admin dashboard is not empty.
-
----
-
-## Future improvements
-
-These are **not implemented** in the current project:
-
-- Stronger authentication (hashed passwords, one password per user)
-- Machine learning classification (would need labeled history; this would be a future enhancement, not the current design)
-- Email or desktop notifications
-- File attachments (screenshots)
-- Reports and charts
-- Role-based technician login (each technician sees only assigned tickets)
-- Replace SQLite with MySQL if multiple computers must share one database
+*Pre-configured Sample Employees:*
+- `1024`: Amit Sharma (Sales)
+- `1025`: Neha Patel (Finance)
+- `1026`: Rohan Iyer (HR)
+- `1027`: Sneha Reddy (Operations)
+- `1028`: Vikram Singh (Marketing)
 
 ---
 
-## Interview notes
+## Planned Enhancements
 
-See [INTERVIEW_PREPARATION.md](INTERVIEW_PREPARATION.md) for a 60-second pitch, file-by-file explanation, SQL, DSA, and likely TCS Prime questions.
+- **Security:** Salted password hashing (e.g., `bcrypt` / `argon2`) with individual user registration.
+- **Client-Server Storage:** Storage adapter interface allowing seamless connection to PostgreSQL or MySQL for multi-workstation deployments.
+- **Machine Learning Classification:** Supervised text classification model (TF-IDF + Logistic Regression) trained on historical incident logs.
+- **Automated Notifications:** SMTP email and desktop system tray alerts on status updates.
+- **Reporting & Analytics:** Incident trend visualization and CSV export functionality for monthly SLA reporting.

@@ -4,7 +4,7 @@ gui.py
 Tkinter screens: Login, Employee Dashboard, Admin Dashboard.
 """
 
-import sqlite3
+import json
 from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -141,7 +141,7 @@ class LoginWindow:
         )
 
         demo = (
-            "Demo login (for interview demonstration)\n"
+            "Demo login credentials:\n"
             "Employee: ID 1024 to 1028  |  Password: emp123\n"
             "Admin/Technician: username admin  |  Password: admin123"
         )
@@ -355,7 +355,7 @@ class EmployeeDashboard:
                     "created_at": created_at,
                 }
             )
-        except (ValueError, sqlite3.Error) as error:
+        except (ValueError, Exception) as error:
             messagebox.showerror("Could not create ticket", str(error))
             return
 
@@ -527,7 +527,7 @@ class AdminDashboard:
 
         try:
             database.update_ticket_status(int(ticket_id), new_status)
-        except (ValueError, sqlite3.Error) as error:
+        except (ValueError, Exception) as error:
             messagebox.showerror("Could not update ticket", str(error))
             return
 

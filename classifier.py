@@ -23,7 +23,7 @@ def classify_ticket(description):
     """
     Return one category: Network, Hardware, Software, Security, or Other.
 
-    Algorithm (easy to explain in an interview):
+    Algorithm steps:
     1. Convert the description to lowercase.
     2. For each category, count how many of its keywords appear in the text.
     3. Choose the category with the highest count.
@@ -56,8 +56,7 @@ def classify_ticket(description):
 
 def get_match_details(description):
     """
-    Optional helper for debugging / interview explanation.
-    Returns the keyword score for every category.
+    Helper function returning keyword matches per category.
     """
     text = (description or "").lower()
     details = {}
